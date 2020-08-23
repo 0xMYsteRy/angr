@@ -101,25 +101,29 @@ struct std::hash<taint_entity_t> {
 	}
 };
 
-typedef struct {
-	address_t address;
-	uint8_t value[MAX_MEM_ACCESS_SIZE]; // Assume size of read is not more than 8 just like write
-	size_t size;
-	bool is_value_symbolic;
-} mem_read_result_t;
-
 typedef struct memory_value_t {
 	uint64_t address;
     uint8_t value[MAX_MEM_ACCESS_SIZE];
     uint64_t size;
 
-	bool operator==(const memory_value_t &other_mem_value) {
+	bool operator==(const memory_value_t &other_mem_value) const {
 		if ((address != other_mem_value.address) || (size != other_mem_value.size)) {
 			return false;
 		}
 		return (memcmp(value, other_mem_value.value, size) == 0);
 	}
+
+	void reset() {
+		address = 0;
+		size = 0;
+		memset(value, 0, MAX_MEM_ACCESS_SIZE);
+	}
 } memory_value_t;
+
+typedef struct {
+	std::vector<memory_value_t> memory_values;
+	bool is_value_symbolic;
+} mem_read_result_t;
 
 typedef struct {
 	uint64_t offset;
@@ -129,11 +133,12 @@ typedef struct {
 typedef struct instr_details_t {
 	address_t instr_addr;
 	bool has_memory_dep;
-	memory_value_t memory_value;
+	memory_value_t *memory_values;
+	uint64_t memory_values_count;
 
-	bool operator==(const instr_details_t &other_instr) {
+	bool operator==(const instr_details_t &other_instr) const {
 		return ((instr_addr == other_instr.instr_addr) && (has_memory_dep == other_instr.has_memory_dep) &&
-			(memory_value == other_instr.memory_value));
+			(memory_values == other_instr.memory_values));
 	}
 
 	bool operator<(const instr_details_t &other_instr) const {
@@ -357,6 +362,10 @@ class State {
 	address_t taint_engine_next_instr_address, taint_engine_mem_read_stop_instruction;
 
 	address_t unicorn_next_instr_addr;
+
+	// Vector of values from previous memory reads. Serves as archival storage for pointers in details
+	// of symbolic instructions returned via ctypes to Python land.
+	std::vector<std::vector<memory_value_t>> archived_memory_values;
 
 public:
 	std::vector<address_t> bbl_addrs;

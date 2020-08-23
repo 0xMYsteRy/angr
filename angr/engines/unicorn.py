@@ -96,10 +96,10 @@ class SimEngineUnicorn(SuccessorsMixin):
         ignored_statement_tags = ["Ist_AbiHint", "Ist_IMark", "Ist_MBE", "Ist_NoOP"]
         self.state.scratch.set_tyenv(vex_block.tyenv)
         for instr_entry in block_details["instrs"]:
-            if "mem_dep" in instr_entry:
-                address = instr_entry["mem_dep"]["address"]
-                value = instr_entry["mem_dep"]["value"]
-                size = instr_entry["mem_dep"]["size"]
+            for memory_val in instr_entry["mem_dep"]:
+                address = memory_val["address"]
+                value = memory_val["value"]
+                size = memory_val["size"]
                 self.state.memory.store(address, value, size=size, endness=self.state.arch.memory_endness)
 
             instr_vex_stmt_indices = vex_block_details["stmt_indices"][instr_entry["instr_addr"]]
