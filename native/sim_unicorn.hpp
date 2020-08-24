@@ -367,6 +367,9 @@ class State {
 	// of symbolic instructions returned via ctypes to Python land.
 	std::vector<std::vector<memory_value_t>> archived_memory_values;
 
+	// Pointer to memory writes' data passed to Python land
+	mem_update *mem_updates_head;
+
 public:
 	std::vector<address_t> bbl_addrs;
 	std::vector<address_t> stack_pointers;
@@ -413,6 +416,11 @@ public:
 	State(uc_engine *_uc, uint64_t cache_key);
 
 	~State() {
+		mem_update_t *next;
+		for (mem_update_t *cur = mem_updates_head; cur; cur = next) {
+			next = cur->next;
+			delete cur;
+		}
 		for (auto it = active_pages.begin(); it != active_pages.end(); it++) {
 			// only poor guys consider about memory leak :(
 			//LOG_D("delete active page %#lx", it->first);
@@ -420,6 +428,7 @@ public:
 			delete[] it->second;
 		}
 		active_pages.clear();
+		mem_updates_head = NULL;
 		uc_free(saved_regs);
 	}
 
